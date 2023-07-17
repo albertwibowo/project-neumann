@@ -1,8 +1,7 @@
 import streamlit as st
 import pandas as pd 
 
-from src.utils.data_handler import DataHandler
-
+from src.data_handler import DataHandler
 
 # sidebar elements
 st.sidebar.write("Settings")
@@ -69,4 +68,10 @@ if target_file is not None and source_file is not None:
 # Tab 2 - Analysis
 
 if target_file is not None and source_file is not None:
-    tab2.dataframe(dh.type_df)
+    tab2.markdown("###### Analysis result")
+    dh.analye(p_threshold)
+    tab2.dataframe(dh.result_df)
+
+    tab2.markdown("###### Visualisation")
+    vis_col = tab2.selectbox(label="select a column to visualise", 
+                             options= dh.type_df['column_names'].unique())
