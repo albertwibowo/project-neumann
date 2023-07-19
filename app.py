@@ -75,3 +75,5 @@ if target_file is not None and source_file is not None:
     tab2.markdown("###### Visualisation")
     vis_col = tab2.selectbox(label="select a column to visualise", 
                              options= dh.type_df['column_names'].unique())
+    
+    tab2.plotly_chart(dh.visualise(column_name=vis_col), use_container_width=True)

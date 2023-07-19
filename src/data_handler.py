@@ -1,4 +1,5 @@
 import pandas as pd
+import plotly.graph_objects as go
 from src.algorithms.chi_square import perform_chi_square
 from src.algorithms.kolmogorov_smirnov import perform_kolmogorov_smirnov_test
 from src.utils.classify_pvalue import classify_pval
@@ -17,7 +18,9 @@ class DataHandler():
         self.result_df = None 
 
     def check_columns(self) -> None:
-
+        '''
+        Method to identify column types.
+        '''
         column_names = []
         column_types = []
         for col in self.source.columns:
@@ -47,8 +50,10 @@ class DataHandler():
 
         return 
     
-    def analye(self, threshold:float) -> None:
-
+    def analye(self, threshold: float) -> None:
+        '''
+        Method to analyse target and reference datasets.
+        '''
         column_names = []
         p_values = []
         conclusions = []
@@ -87,5 +92,102 @@ class DataHandler():
         self.result_df = pd.DataFrame({'column_names': column_names, 
                                      'p_values': p_values,
                                      'statistical_conclusions': conclusions})
+
+        return 
+    
+    def visualise(self, column_name: str):
+        '''
+        Method to visualise a column.
+        '''
+
+        col_type = self.type_df[self.type_df['column_names'] == column_name]['column_types'].item()
+
+        if col_type == 'categorical':
+        
+            series_source = self.source[column_name].dropna()
+            series_target = self.target[column_name].dropna()
+            accepted_values = list(series_source.unique())
+
+            series_source_count = series_source.groupby(series_source).size().values
+            series_target_count = series_target.groupby(series_target).size().values
+
+            # create plotly object
+
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=accepted_values,
+                y=series_source_count,
+                name='source',
+                marker_color='rgb(55, 83, 109)'
+                ))
+            
+            fig.add_trace(go.Bar(x=accepted_values,
+                            y=series_target_count,
+                            name='target',
+                            marker_color='rgb(26, 118, 255)'
+                            ))
+
+            fig.update_layout(
+                title='Bar chart between source and target data',
+                xaxis_tickfont_size=14,
+                yaxis=dict(
+                    title='Count',
+                    titlefont_size=16,
+                    tickfont_size=14,
+                ),
+                legend=dict(
+                    x=0,
+                    y=1.0,
+                    bgcolor='rgba(255, 255, 255, 0)',
+                    bordercolor='rgba(255, 255, 255, 0)'
+                ),
+                barmode='group',
+                bargap=0.15, # gap between bars of adjacent location coordinates.
+                bargroupgap=0.1 # gap between bars of the same location coordinate.
+            )
+            return fig
+
+        elif col_type == 'numerical':
+            
+            series_source = self.source[column_name].dropna()
+            series_target = self.target[column_name].dropna()
+
+            fig = go.Figure()
+            fig.add_trace(go.Histogram(
+                x=series_source,
+                histnorm='density',
+                name='source', # name used in legend and hover labels
+                xbins=dict( # bins used for histogram
+                    start=-4.0,
+                    end=3.0,
+                    size=0.5
+                ),
+                marker_color='rgb(55, 83, 109)',
+                opacity=0.75
+            ))
+            fig.add_trace(go.Histogram(
+                x=series_target,
+                histnorm='density',
+                name='target',
+                xbins=dict(
+                    start=-3.0,
+                    end=4,
+                    size=0.5
+                ),
+                marker_color='rgb(26, 118, 255)',
+                opacity=0.75
+            ))
+
+            fig.update_layout(
+                title_text='Bar chart between source and target data', # title of plot
+                xaxis_title_text='Bins', # xaxis label
+                yaxis_title_text='Count', # yaxis label
+                bargap=0.2, # gap between bars of adjacent location coordinates
+                bargroupgap=0.1 # gap between bars of the same location coordinates
+            )
+
+            return fig
+
+        else:
+            pass
 
         return 
