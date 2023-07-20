@@ -10,9 +10,9 @@ from src.utils.classify_pvalue import classify_pval
 class DataHandler():
 
     def __init__(self, target: pd.DataFrame, 
-                 source: pd.DataFrame):
+                 reference: pd.DataFrame):
         self.target = target
-        self.source = source
+        self.reference = reference
 
         self.type_df = None 
         self.result_df = None 
@@ -23,17 +23,26 @@ class DataHandler():
         '''
         column_names = []
         column_types = []
-        for col in self.source.columns:
+        for col in self.reference.columns:
 
             column_names.append(col)
-            if self.source[col].nunique == self.source.shape[0]:
+            if self.reference[col].nunique == self.reference.shape[0]:
                 column_types.append('id')
             
-            elif self.source[col].dtype == 'O':
+            elif self.reference[col].dtype == 'O':
                 column_types.append('categorical')
-            
-            else:
+
+            elif self.reference[col].dtype == 'float64':
                 column_types.append('numerical')
+            
+            elif self.reference[col].dtype == 'int64':
+                column_types.append('numerical')
+
+            elif self.reference[col].dtype == 'bool':
+                column_types.append('categorical')
+
+            else:
+                column_types.append('categorical')
 
         self.type_df = pd.DataFrame({'column_names': column_names, 
                                      'column_types': column_types})
@@ -42,10 +51,10 @@ class DataHandler():
     def coerce_quality(self) -> None:
         '''
         Method to ensure we only consider columns
-        that exist in the source dataframe.
+        that exist in the reference dataframe.
         '''
-        source_columns = list(self.source.columns)
-        target_columns = [col for col in self.target.columns if col in source_columns]
+        reference_columns = list(self.reference.columns)
+        target_columns = [col for col in self.target.columns if col in reference_columns]
         self.target = self.target[target_columns]
 
         return 
@@ -62,7 +71,7 @@ class DataHandler():
             column_name = row['column_names']
             if row['column_types'] == 'numerical':
                 p_value = perform_kolmogorov_smirnov_test(self.target[column_name].dropna(),
-                                                          self.source[column_name].dropna())
+                                                          self.reference[column_name].dropna())
                 conclusion = classify_pval(pval=p_value, threshold=threshold)
                 column_names.append(column_name)
                 p_values.append(p_value)
@@ -71,14 +80,14 @@ class DataHandler():
             
             elif row['column_types'] == 'categorical':
 
-                series_source = self.source[column_name].dropna()
+                series_reference = self.reference[column_name].dropna()
                 series_target = self.target[column_name].dropna()
 
-                accepted_values = list(series_source.unique())
+                accepted_values = list(series_reference.unique())
                 series_target= series_target[series_target.isin(accepted_values)]
 
-                p_value = perform_chi_square(f_obs=series_source.groupby(series_source).size().values,
-                                             f_exp=series_target.groupby(series_target).size().values)
+                p_value = perform_chi_square(f_obs=series_target.groupby(series_target).size().values,
+                                             f_exp=series_reference.groupby(series_reference).size().values)
                 
                 conclusion = classify_pval(pval=p_value, threshold=threshold)
                 column_names.append(column_name)
@@ -104,19 +113,19 @@ class DataHandler():
 
         if col_type == 'categorical':
         
-            series_source = self.source[column_name].dropna()
+            series_reference = self.reference[column_name].dropna()
             series_target = self.target[column_name].dropna()
-            accepted_values = list(series_source.unique())
+            accepted_values = list(series_reference.unique())
 
-            series_source_count = series_source.groupby(series_source).size().values
+            series_reference_count = series_reference.groupby(series_reference).size().values
             series_target_count = series_target.groupby(series_target).size().values
 
             # create plotly object
 
             fig = go.Figure()
             fig.add_trace(go.Bar(x=accepted_values,
-                y=series_source_count,
-                name='source',
+                y=series_reference_count,
+                name='reference',
                 marker_color='rgb(55, 83, 109)'
                 ))
             
@@ -127,7 +136,7 @@ class DataHandler():
                             ))
 
             fig.update_layout(
-                title='Bar chart between source and target data',
+                title='Bar chart between reference and target data',
                 xaxis_tickfont_size=14,
                 yaxis=dict(
                     title='Count',
@@ -148,14 +157,14 @@ class DataHandler():
 
         elif col_type == 'numerical':
             
-            series_source = self.source[column_name].dropna()
+            series_reference = self.reference[column_name].dropna()
             series_target = self.target[column_name].dropna()
 
             fig = go.Figure()
             fig.add_trace(go.Histogram(
-                x=series_source,
+                x=series_reference,
                 histnorm='density',
-                name='source', # name used in legend and hover labels
+                name='reference', # name used in legend and hover labels
                 xbins=dict( # bins used for histogram
                     start=-4.0,
                     end=3.0,
@@ -178,7 +187,7 @@ class DataHandler():
             ))
 
             fig.update_layout(
-                title_text='Bar chart between source and target data', # title of plot
+                title_text='Bar chart between reference and target data', # title of plot
                 xaxis_title_text='Bins', # xaxis label
                 yaxis_title_text='Count', # yaxis label
                 bargap=0.2, # gap between bars of adjacent location coordinates
