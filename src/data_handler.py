@@ -25,24 +25,27 @@ class DataHandler():
         column_types = []
         for col in self.reference.columns:
 
-            column_names.append(col)
-            if self.reference[col].nunique == self.reference.shape[0]:
-                column_types.append('id')
-            
-            elif self.reference[col].dtype == 'O':
+            column_names.append(col)            
+            if self.reference[col].dtype == 'O':
                 column_types.append('categorical')
 
             elif self.reference[col].dtype == 'float64':
-                column_types.append('numerical')
+                if self.reference[col].apply(lambda x: x.is_integer()).all():
+                    column_types.append('id')
+                else:
+                    column_types.append('numerical')
             
             elif self.reference[col].dtype == 'int64':
-                column_types.append('numerical')
+                diff = self.reference[col].diff().dropna()
+                if (diff == 1).all() or (diff == -1).all():
+                    column_types.append('id')
+                else:
+                    column_types.append('numerical')
 
             elif self.reference[col].dtype == 'bool':
                 column_types.append('categorical')
-
             else:
-                column_types.append('categorical')
+                 column_types.append('unrecognised type')
 
         self.type_df = pd.DataFrame({'column_names': column_names, 
                                      'column_types': column_types})
@@ -110,7 +113,7 @@ class DataHandler():
         '''
 
         col_type = self.type_df[self.type_df['column_names'] == column_name]['column_types'].item()
-
+        
         if col_type == 'categorical':
         
             series_reference = self.reference[column_name].dropna()
@@ -166,7 +169,7 @@ class DataHandler():
                 histnorm='density',
                 name='reference', # name used in legend and hover labels
                 xbins=dict( # bins used for histogram
-                    start=-4.0,
+                    start=-3.0,
                     end=3.0,
                     size=0.5
                 ),
@@ -179,7 +182,7 @@ class DataHandler():
                 name='target',
                 xbins=dict(
                     start=-3.0,
-                    end=4,
+                    end=3,
                     size=0.5
                 ),
                 marker_color='rgb(26, 118, 255)',
